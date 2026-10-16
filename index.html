@@ -460,6 +460,7 @@ body{font-variant-numeric:tabular-nums}
 .lob-card p{margin:0;color:#333;font-size:14px}
 .lob-code{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:.12em;line-height:1;color:#111}
 .lob-link{display:flex;gap:6px}.lob-link input{flex:1;border-color:#d7d4cb;font-size:13px}
+.lob-hint{margin:6px 0 0;padding:10px 12px;background:#e7f3ec;border-left:4px solid #1f7a45;border-radius:8px;color:#1b3a28;font-size:14px;line-height:1.4}
 .lob-pl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .lob-pl li{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:8px 10px;font-weight:600;font-size:15px;color:#111}
 .lob-pl li i{width:9px;height:9px;border-radius:50%;background:#1f7a45;flex:none}
@@ -3871,6 +3872,7 @@ $('#menuOv').addEventListener('click', e => {
   else if (m === 'main') { save(); showMainMenu(true); }
   else if (m === 'new') { if (hadSave) { menuPane = 'newc'; renderMenu(); } else startNew(); }
   else if (m === 'newyes') startNew();
+  else if (m === 'play') { if (hadSave) resumeGame(); else startNew(); }
   else if (m === 'lobby') { menuPane = 'lobby'; renderMenu(); return; }
   else if (m === 'mkroom') { const code = Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[rint(0, 30)]).join('').toLowerCase(); switchRoom(code); return; }
   else if (m === 'joinroom') { const v = ($('#joinIn').value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32); if (!v) return toast('Arkadaşının verdiği oda kodunu yaz', 'bad'); switchRoom(v); return; }
@@ -5534,14 +5536,15 @@ function lobbyHTML() {
     <div class="lob-code">${pub ? 'Herkese açık şehir' : esc(code.toUpperCase())}</div>
     ${pub ? '<p>Linki açan herkes burada. Sadece arkadaşlarınla oynamak için kendi odanı kur.</p>' : `<p>Bu linki arkadaşına gönder, açınca aynı şehirde olursunuz:</p><div class="lob-link"><input readonly value="${esc(link)}" aria-label="Davet linki"><button class="b pri" data-m="invite" type="button">Kopyala</button></div>`}
     <small>Odadakiler</small><ul class="lob-pl" id="lobPl">${lobbyPlayers()}</ul>
+    <p class="lob-hint">Arkadaşın listede görününce ikiniz de aşağıdaki <b>Oyuna gir</b> düğmesine basın. Şehirde birbirinizi görür, telefondan mesajlaşabilirsiniz.</p>
   </div>`}
   <div class="lob-acts">
-    <button class="b pri" data-m="mkroom" type="button">Yeni oda kur</button>
+    <button class="b" data-m="mkroom" type="button">Yeni oda kur</button>
     <form class="lob-join" onsubmit="return false"><input id="joinIn" maxlength="12" placeholder="Oda kodu" aria-label="Katılacağın oda kodu"><button class="b" data-m="joinroom" type="button">Odaya katıl</button></form>
     ${!pub && !solo ? '<button class="b" data-m="publicroom" type="button">Herkese açık şehre dön</button>' : ''}
     ${!solo ? '<button class="b" data-m="solo" type="button">Tek kişilik oyna</button>' : ''}
   </div>
-  ${menuMode === 'pause' ? '<button class="mbtn pri" data-m="resume">Oyuna dön</button>' : '<button class="mbtn pri" data-m="back">Tamam</button>'}`;
+  ${menuMode === 'pause' ? '<button class="mbtn pri" data-m="resume">Oyuna dön</button>' : '<button class="mbtn pri" data-m="play">Oyuna gir ▶</button><button class="mbtn sm" data-m="back">← Ana menü</button>'}`;
 }
 function refreshLobby() { const el = $('#lobPl'); if (el && !$('#menuOv').hidden) el.innerHTML = lobbyPlayers(); }
 function leaveP2P() { try { P2P.room && P2P.room.leave(); } catch (_) {} P2P.room = null; P2P.pres.clear(); P2P.hello.clear(); P2P.mkts.clear(); clearPeers(); NET.market = []; buildScores(); renderOnlinePill(); }
