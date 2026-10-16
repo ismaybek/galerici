@@ -5266,7 +5266,8 @@ async function resolveNames(ids) {
 }
 const nameOf = id => (id && NET.names[id] && NET.names[id].name) || 'Galerici';
 /* --- presence: my position --- */
-let netT = 0, lastPres = '';
+let netT = 0, lastPres = '', posHB = 0, myPos = null;
+function sendPos(target) { if (!P2P.room || !myPos) return; try { P2P.act.pos.send(myPos, target ? { target } : undefined); } catch (_) {} }
 function updateOnline(dt) {
   if ((!NET.room && !P2P.room) || !S) return;
   p2pTick();
@@ -5277,7 +5278,8 @@ function updateOnline(dt) {
     const p = car ? { x: +car.x.toFixed(2), z: +car.z.toFixed(2), h: +car.h.toFixed(2), m: 'd', mi: car.mi, c: car.color } : { x: +player.x.toFixed(2), z: +player.z.toFixed(2), h: +(player.yaw + Math.PI).toFixed(2), m: 'w' };
     p.lv = S.level || 1; if (NET.myId) p.id = NET.myId;
     const key = JSON.stringify(p);
-    if (key !== lastPres) { lastPres = key; if (P2P.room) { try { P2P.act.pos.send(p); } catch (_) {} } else NET.room.presence({ p }).catch(() => {}); }
+    posHB -= 0.1;
+    if (key !== lastPres || (P2P.room && posHB <= 0)) { lastPres = key; posHB = 2; myPos = p; if (P2P.room) { try { P2P.act.pos.send(p); } catch (_) {} } else NET.room.presence({ p }).catch(() => {}); }
   }
   // smooth remote avatars
   NET.peers.forEach(P => {
@@ -5489,6 +5491,7 @@ function refreshOnlineViews() {
 }
 
 /* ====================== P2P online (GitHub Pages etc.): Trystero over public Nostr relays, no server ====================== */
+const P2P_TURN = [{ urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }];
 const P2P = { room: null, act: {}, pres: new Map(), hello: new Map(), mkts: new Map(), roomId: 'sehir', dirty: false };
 const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (_) { return null; } };
 function myNick() { return (LS('galerici-nick') || '').trim().slice(0, 18) || 'Galerici' + (LS('galerici-nick-n') || (LS('galerici-nick-n', String(rint(100, 999))), LS('galerici-nick-n'))); }
@@ -5497,7 +5500,8 @@ function initP2P() {
   if (!window.Trystero || LS('galerici-online') === '0' || !window.isSecureContext || !(window.crypto && crypto.subtle)) return false;
   try {
     P2P.roomId = p2pRoomId();
-    const room = window.Trystero.joinRoom({ appId: 'galerici-simulatoru-tr-v1' }, P2P.roomId);
+    P2P.err = ''; P2P.since = Date.now();
+    const room = window.Trystero.joinRoom({ appId: 'galerici-simulatoru-tr-v1', turnConfig: P2P_TURN }, P2P.roomId, { onJoinError: e => { console.warn('p2p join', e); P2P.err = 'Arkadaşına doğrudan bağlanılamadı. İnternetin (mobil veri, okul/yurt ağı) bağlantıyı engelliyor olabilir. İkiniz de sayfayı yenileyip tekrar deneyin ya da başka bir ağdan (ev Wi‑Fi’si) girin.'; refreshLobby(); } });
     P2P.room = room; NET.mode = 'p2p'; NET.myId = window.Trystero.selfId;
     const mk = n => room.makeAction(n);
     P2P.act.pos = mk('pos'); P2P.act.hello = mk('hello'); P2P.act.chat = mk('chat'); P2P.act.mkt = mk('mkt');
@@ -5506,10 +5510,10 @@ function initP2P() {
     P2P.act.hello.onMessage = (h, { peerId }) => { if (!h || typeof h !== 'object') return; const name = String(h.name || 'Galerici').replace(/[\u0000-\u001f]/g, '').slice(0, 18); NET.names[peerId] = { name }; P2P.hello.set(peerId, { id: peerId, name, net: +h.net || 0, day: h.day | 0, sold: h.sold | 0, level: h.level | 0, biz: h.biz | 0, at: Date.now() }); rememberScore(name, P2P.hello.get(peerId)); buildScores(); P2P.dirty = true; refreshOnlineViews(); refreshLobby(); };
     P2P.act.chat.onMessage = (d, { peerId }) => onChat({ peer: peerId, by: peerId, isMe: false, data: d });
     P2P.act.mkt.onMessage = (list, { peerId }) => { P2P.mkts.set(peerId, Array.isArray(list) ? list.slice(0, 20) : []); buildMarket(); refreshOnlineViews(); };
-    room.onPeerJoin = id => { sendHello(id); sendMkt(id); };
+    room.onPeerJoin = id => { P2P.err = ''; sendHello(id); sendMkt(id); lastPres = ''; sendPos(id); };
     room.onPeerLeave = id => { P2P.pres.delete(id); P2P.hello.delete(id); P2P.mkts.delete(id); buildMarket(); buildScores(); P2P.dirty = true; refreshOnlineViews(); refreshLobby(); };
     NET.ready = true; buildScores(); renderOnlinePill();
-    setInterval(() => sendHello(), 10000);
+    clearInterval(P2P.hbT); P2P.hbT = setInterval(() => sendHello(), 10000);
     return true;
   } catch (e) { console.warn('p2p', e); return false; }
 }
@@ -5521,7 +5525,8 @@ function switchRoom(code) {
 }
 function lobbyPlayers() {
   const rows = [`<li class="me"><i></i>${esc(myNick())} <small>sen</small></li>`].concat([...P2P.hello.values()].map(h => `<li><i></i>${esc(h.name)} <small>seviye ${h.level | 0} · gün ${h.day | 0}</small></li>`));
-  return rows.join('') + (P2P.hello.size ? '' : `<li class="wait">Arkadaşın bekleniyor… Linki gönder, o açınca burada görünecek.</li>`);
+  const long = Date.now() - (P2P.since || 0) > 20000;
+  return rows.join('') + (P2P.hello.size ? '' : `<li class="wait">${P2P.err ? esc(P2P.err) : long ? 'Hâlâ kimse yok. Arkadaşın aynı kodu girdiyse 20-30 saniye bekleyin; olmazsa ikiniz de sayfayı yenileyin.' : 'Arkadaşın bekleniyor… Linki gönder, o açınca burada görünecek.'}</li>`);
 }
 function lobbyHTML() {
   const solo = LS('galerici-online') === '0' || (!P2P.room && NET.mode !== 'claude');
@@ -5546,8 +5551,9 @@ function lobbyHTML() {
   </div>
   ${menuMode === 'pause' ? '<button class="mbtn pri" data-m="resume">Oyuna dön</button>' : '<button class="mbtn pri" data-m="play">Oyuna gir ▶</button><button class="mbtn sm" data-m="back">← Ana menü</button>'}`;
 }
+setInterval(() => refreshLobby(), 5000);
 function refreshLobby() { const el = $('#lobPl'); if (el && !$('#menuOv').hidden) el.innerHTML = lobbyPlayers(); }
-function leaveP2P() { try { P2P.room && P2P.room.leave(); } catch (_) {} P2P.room = null; P2P.pres.clear(); P2P.hello.clear(); P2P.mkts.clear(); clearPeers(); NET.market = []; buildScores(); renderOnlinePill(); }
+function leaveP2P() { clearInterval(P2P.hbT); try { P2P.room && P2P.room.leave(); } catch (_) {} P2P.room = null; P2P.pres.clear(); P2P.hello.clear(); P2P.mkts.clear(); clearPeers(); NET.market = []; buildScores(); renderOnlinePill(); }
 function sendHello(target) { if (!P2P.room || !S) return; const h = { name: myNick(), net: netWorth(), day: S.day, sold: S.sold || 0, level: S.level || 1, biz: Object.keys(S.biz || {}).length }; rememberScore(myNick(), Object.assign({ id: NET.myId }, h)); try { P2P.act.hello.send(h, target ? { target } : undefined); } catch (_) {} }
 function myListings() { return S ? S.cars.filter(c => c.onlineId).map(c => ({ id: c.onlineId, price: c.onlinePrice, car: packCar(c) })) : []; }
 function sendMkt(target) { if (!P2P.room) return; try { P2P.act.mkt.send(myListings(), target ? { target } : undefined); } catch (_) {} buildMarket(); }
