@@ -453,6 +453,20 @@ body{font-variant-numeric:tabular-nums}
 .mbtn.pri:hover,.mbtn.pri:focus-visible{background:#e8352d;color:#fff}
 .mbtn small{font-family:var(--body);font-size:13px;color:inherit;opacity:.85}
 .mbtn.sm{font-size:20px}
+.lob-name{display:flex;flex-direction:column;gap:4px;margin:4px 0 12px;color:#c8ccd4;font-size:13px}
+.lob-name input,.lob-join input,.lob-link input{background:#fff;color:var(--ink);border:2px solid #fff;border-radius:10px;padding:9px 12px;font:600 16px var(--body);min-width:0}
+.lob-card{background:var(--plate);color:var(--ink);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.lob-card small{color:#555;font-size:12.5px;font-weight:600}
+.lob-card p{margin:0;color:#333;font-size:14px}
+.lob-code{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:.12em;line-height:1;color:#111}
+.lob-link{display:flex;gap:6px}.lob-link input{flex:1;border-color:#d7d4cb;font-size:13px}
+.lob-pl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.lob-pl li{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:8px 10px;font-weight:600;font-size:15px;color:#111}
+.lob-pl li i{width:9px;height:9px;border-radius:50%;background:#1f7a45;flex:none}
+.lob-pl li small{color:#555;font-weight:500}
+.lob-pl li.wait{background:transparent;color:#555;font-weight:500;font-size:13.5px}.lob-pl li.wait i{display:none}
+.lob-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.lob-join{display:flex;gap:6px}.lob-join input{width:120px;text-transform:uppercase}
 .idform{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px}
 .idform label{display:flex;flex-direction:column;gap:3px}.idform small{color:#9aa1ad;font-size:12px}
 .idform input{width:150px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;padding:8px 10px;font:600 15px var(--body)}
@@ -499,6 +513,21 @@ body{font-variant-numeric:tabular-nums}
 .pc-app{background:var(--plate)}
 
 @media (prefers-reduced-motion:reduce){.dlg{animation:none}}
+/* readability pass: every light surface gets dark text, every coloured button white text at >=4.5:1 */
+:root{--yes:#1f7a45}
+.b{color:var(--ink);background:#fff}
+.b.pri,.b.go{color:#fff}
+.b.go{background:#1f7a45;border-color:#1f7a45}
+.b.pri{background:#1f4fbf;border-color:#1f4fbf}
+.b.go em{color:#e6f6ec}.b.pri em{color:#e3eaff}
+.b em{color:#1f4fbf}
+.lc,.rep,.lbr,.quick button,.cnt{color:var(--ink)}
+.lc .m,.rep small,.note{color:#555}
+.pos{color:#1d7a44}.neg{color:#b42318}
+.flip .pos{color:#1d7a44}.flip .neg{color:#b42318}
+.sk small,.sk-grid small{color:#555}
+.app[data-app=gorev] i{--c:#a86b12}
+
 .ph-screen.home .ph-body{padding-top:50px}
 #netPill{right:max(16px,env(safe-area-inset-right,0px));top:190px;background:rgba(31,79,191,.9);color:#fff;border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:600}
 #netPill::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#58d68d;margin-right:7px;vertical-align:1px}
@@ -2155,13 +2184,13 @@ let phoneTab = 'home';
 const PH_APPS = [
   ['ilan', 'İlanlar', '#d3261f', '<path d="M3 13l2-5a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 5v5H3z"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/>'],
   ['garaj', 'Arabalarım', '#1f4fbf', '<path d="M3 21V9l9-6 9 6v12M7 21v-6h10v6M7 18h10"/>'],
-  ['mesaj', 'Mesajlar', '#2fa864', '<path d="M4 5h16v11H8l-4 4z"/>'],
+  ['mesaj', 'Mesajlar', '#1f7a45', '<path d="M4 5h16v11H8l-4 4z"/>'],
   ['mezat', 'Mezat', '#7a4fc9', '<path d="M14 4l6 6-3 3-6-6zM11 7l-7 7 3 3 7-7M3 21h10"/>'],
-  ['gorev', 'Başarımlar', '#e0a030', '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>'],
-  ['skill', 'Beceriler', '#178f86', '<path d="M12 3l2.6 5.6 6 .7-4.4 4.2 1.1 6L12 16.8 6.7 19.5l1.1-6L3.4 9.3l6-.7z"/>'],
+  ['gorev', 'Başarımlar', '#9a6510', '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>'],
+  ['skill', 'Beceriler', '#0f766e', '<path d="M12 3l2.6 5.6 6 .7-4.4 4.2 1.1 6L12 16.8 6.7 19.5l1.1-6L3.4 9.3l6-.7z"/>'],
   ['pazar', 'Online Pazar', '#c2410c', '<path d="M3 9l1.5-5h15L21 9M3 9h18v3a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM5 14v6h14v-6"/>'],
   ['sira', 'Sıralama', '#0e7490', '<path d="M8 21V11M16 21V7M12 21V3M4 21h16"/>'],
-  ['harita', 'Harita', '#3a8a3a', '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/>'],
+  ['harita', 'Harita', '#2f6f2f', '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/>'],
   ['radyo', 'Galeri', '#5a6270', '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'],
 ];
 function phBadge(k) {
@@ -2264,7 +2293,7 @@ function openDlg(html, ctx) {
   const who = d.querySelector('.who'); if (who && !who.querySelector('.av')) {
     const nm = (who.querySelector('b') || {}).textContent || '?', ini = nm.split(/\s+/).filter(w => /^[A-ZÇĞİÖŞÜ]/.test(w)).slice(0, 2).map(w => w[0]).join('') || nm[0];
     let h = 0; for (const ch of nm) h = (h * 31 + ch.charCodeAt(0)) % 360;
-    const av = document.createElement('span'); av.className = 'av'; av.textContent = ini; av.style.background = `hsl(${h} 45% 42%)`; av.setAttribute('aria-hidden', 'true'); who.prepend(av);
+    const av = document.createElement('span'); av.className = 'av'; av.textContent = ini; av.style.background = `hsl(${h} 50% 33%)`; av.setAttribute('aria-hidden', 'true'); who.prepend(av);
   }
   const ch = d.querySelector('.chat'); if (ch) ch.scrollTop = ch.scrollHeight;
 }
@@ -3799,12 +3828,13 @@ function menuHTML() {
     <button class="mbtn sm" data-m="back">← Geri</button>`;
   else if (menuPane === 'keys') pane = `<h3>Kontroller</h3>${IS_TOUCH ? `<div class="keys"><kbd>Sol daire</kbd><span>Yürü / sür</span><kbd>Ekranı sürükle</kbd><span>Etrafa bak</span><kbd>E</kbd><span>Etkileşim (basılı tut)</span><kbd>BİN</kbd><span>Arabaya bin / in</span><kbd>EĞİL</kbd><span>Eğil</span><kbd>TEL</kbd><span>Telefon</span><kbd>☰</kbd><span>Menü</span></div>` : `<div class="keys"><kbd>W A S D</kbd><span>Yürü / sür</span><kbd>Shift</kbd><span>Koş</span><kbd>Space</kbd><span>Zıpla / el freni (drift)</span><kbd>E</kbd><span>Etkileşim (ölçerken basılı tut)</span><kbd>R</kbd><span>Kaputu aç</span><kbd>F</kbd><span>Arabaya bin / in</span><kbd>G</kbd><span>Elindekini bırak</span><kbd>1–5 / tekerlek</kbd><span>Alet seç</span><kbd>C</kbd><span>Eğil</span><kbd>V</kbd><span>Kokpit kamerası</span><kbd>H</kbd><span>Korna</span><kbd>Tab</kbd><span>Telefon</span><kbd>M</kbd><span>Harita</span><kbd>K</kbd><span>Beceriler</span><kbd>B</kbd><span>Dekorasyon modu</span><kbd>Y</kbd><span>Radyo (sürerken)</span><kbd>ESC / P</kbd><span>Menü</span></div>`}<button class="mbtn sm" data-m="back">← Geri</button>`;
   else if (menuPane === 'newc') pane = `<h3>Yeni oyun</h3><p>Kayıtlı galerin, paran, arabaların ve becerilerin silinecek. Emin misin?</p><button class="mbtn danger" data-m="newyes">Evet, sıfırdan başla</button><button class="mbtn sm" data-m="back">Vazgeç</button>`;
+  else if (menuPane === 'lobby') pane = lobbyHTML();
   else if (menuPane === 'saved') pane = `<h3>Kaydedildi</h3><p>Gün ${S.day}, kasa ${fmt(S.cash)}. Oyun ayrıca her 15 saniyede bir kendiliğinden kaydediliyor.</p><button class="mbtn sm" data-m="back">← Geri</button>`;
-  const onl = LS('galerici-online') !== '0';
-  const idForm = `<div class="idform"><label><small>Oyuncu adın</small><input id="nickIn" maxlength="18" autocomplete="off" value="${esc(myNick())}"></label><label><small>Oda</small><input id="odaIn" maxlength="32" autocomplete="off" value="${esc(P2P.roomId || p2pRoomId())}"></label><button class="b ${onl ? 'go' : ''}" data-m="online" type="button">${onl ? 'Çevrimiçi' : 'Tek kişilik'}</button></div>${P2P.room ? `<p class="idnote">Aynı odadakilerle aynı şehirde oynarsın. Arkadaşına linki gönder: <button class="b" data-m="invite" type="button">Davet linkini kopyala</button></p>` : NET.mode === 'claude' ? '<p class="idnote">Claude üzerinden çevrimiçisin.</p>' : ''}`;
+  const roomLabel = P2P.room ? (P2P.roomId === 'sehir' ? 'Herkese açık şehir' : 'Oda ' + P2P.roomId.toUpperCase()) + ` · ${P2P.hello.size + 1} kişi` : NET.mode === 'claude' ? 'Claude üzerinden çevrimiçi' : 'Şu an tek kişilik';
+  const idForm = `<button class="mbtn" data-m="lobby">Arkadaşlarla oyna <small>${esc(roomLabel)}</small></button>`;
   const list = pause
-    ? `${idForm}<button class="mbtn pri" data-m="resume">Devam et</button><button class="mbtn" data-m="save">Kaydet</button><button class="mbtn" data-m="set">Ayarlar</button><button class="mbtn" data-m="keys">Kontroller</button><button class="mbtn" data-m="main">Ana menüye dön</button>`
-    : `${idForm}${hadSave ? `<div class="save-card" aria-label="Kayıtlı oyun"><small>Gün</small><small>Kasa</small><small>Araba</small><small>Seviye</small><b>${S.day}</b><b class="money">${fmt(S.cash)}</b><b>${S.cars.filter(c => c.owner === 'me').length}</b><b>${S.level || 1}</b></div><button class="mbtn pri" data-m="resume">Galeriye devam et</button>` : ''}<button class="mbtn ${hadSave ? '' : 'pri'}" data-m="new">Yeni oyun</button><button class="mbtn" data-m="guide">Nasıl oynanır</button><button class="mbtn" data-m="set">Ayarlar</button><button class="mbtn" data-m="keys">Kontroller</button>`;
+    ? `<button class="mbtn pri" data-m="resume">Devam et</button>${idForm}<button class="mbtn" data-m="save">Kaydet</button><button class="mbtn" data-m="set">Ayarlar</button><button class="mbtn" data-m="keys">Kontroller</button><button class="mbtn" data-m="main">Ana menüye dön</button>`
+    : `${hadSave ? `<div class="save-card" aria-label="Kayıtlı oyun"><small>Gün</small><small>Kasa</small><small>Araba</small><small>Seviye</small><b>${S.day}</b><b class="money">${fmt(S.cash)}</b><b>${S.cars.filter(c => c.owner === 'me').length}</b><b>${S.level || 1}</b></div><button class="mbtn pri" data-m="resume">Galeriye devam et</button>` : ''}<button class="mbtn ${hadSave ? '' : 'pri'}" data-m="new">Yeni oyun</button>${idForm}<button class="mbtn" data-m="guide">Nasıl oynanır</button><button class="mbtn" data-m="set">Ayarlar</button><button class="mbtn" data-m="keys">Kontroller</button>`;
   return `<div class="menu-l"><div class="menu-logo"><h1>Galerici Simülatörü</h1><div class="logo-plate" role="img" aria-label="Galerici Simülatörü"><span class="lp-tr"><i></i>TR</span><span class="lp-txt">GALERİCİ</span></div>
     <div class="menu-sub"><b>Simülatörü</b><span>${pause ? 'Oyun duraklatıldı' : 'Ucuza al, iyice incele, kârla sat.'}</span></div></div>
     <nav class="menu-list">${menuPane === 'list' ? list : pane}</nav>
@@ -3816,6 +3846,7 @@ function showMainMenu(hasSave) {
   $('#modal').hidden = true; if (auc) endAuction();
   if (mode === 'drive') { const c = carById(S.driving); if (c) { c.v = 0; } }
   hadSave = hasSave; inMenu = true; menuMode = 'main'; menuPane = 'list'; paused = true;
+  if (/oda=/.test(location.hash) && !NET.lobbyShown) { NET.lobbyShown = true; menuPane = 'lobby'; }
   document.body.classList.add('in-menu'); $('#menuOv').hidden = false; renderMenu(); engineStop();
 }
 function openPause() {
@@ -3840,8 +3871,13 @@ $('#menuOv').addEventListener('click', e => {
   else if (m === 'main') { save(); showMainMenu(true); }
   else if (m === 'new') { if (hadSave) { menuPane = 'newc'; renderMenu(); } else startNew(); }
   else if (m === 'newyes') startNew();
+  else if (m === 'lobby') { menuPane = 'lobby'; renderMenu(); return; }
+  else if (m === 'mkroom') { const code = Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[rint(0, 30)]).join('').toLowerCase(); switchRoom(code); return; }
+  else if (m === 'joinroom') { const v = ($('#joinIn').value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32); if (!v) return toast('Arkadaşının verdiği oda kodunu yaz', 'bad'); switchRoom(v); return; }
+  else if (m === 'publicroom') { switchRoom('sehir'); return; }
+  else if (m === 'solo') { LS('galerici-online', '0'); leaveP2P(); renderMenu(); return; }
   else if (m === 'online') { const on = LS('galerici-online') === '0'; LS('galerici-online', on ? '1' : '0'); if (on) { if (!P2P.room && NET.mode !== 'claude') initP2P(); } else leaveP2P(); renderMenu(); return; }
-  else if (m === 'invite') { const url = location.href.split('#')[0] + '#oda=' + P2P.roomId; try { navigator.clipboard.writeText(url).then(() => toast('Davet linki kopyalandı: ' + url, 'good'), () => toast(url)); } catch (_) { toast(url); } return; }
+  else if (m === 'invite') { const url = location.href.split('#')[0] + (P2P.roomId === 'sehir' ? '' : '#oda=' + P2P.roomId); try { navigator.clipboard.writeText(url).then(() => toast('Davet linki kopyalandı: ' + url, 'good'), () => toast(url)); } catch (_) { toast(url); } return; }
   else if (m === 'guide') { $('#menuOv').hidden = true; intro(false, true); }
 });
 $('#menuOv').addEventListener('change', e => {
@@ -5456,7 +5492,7 @@ const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k)
 function myNick() { return (LS('galerici-nick') || '').trim().slice(0, 18) || 'Galerici' + (LS('galerici-nick-n') || (LS('galerici-nick-n', String(rint(100, 999))), LS('galerici-nick-n'))); }
 function p2pRoomId() { const m = location.hash.match(/oda=([a-z0-9_-]{1,32})/i); return (m ? m[1] : (LS('galerici-oda') || 'sehir')).toLowerCase(); }
 function initP2P() {
-  if (!window.Trystero || LS('galerici-online') === '0') return false;
+  if (!window.Trystero || LS('galerici-online') === '0' || !window.isSecureContext || !(window.crypto && crypto.subtle)) return false;
   try {
     P2P.roomId = p2pRoomId();
     const room = window.Trystero.joinRoom({ appId: 'galerici-simulatoru-tr-v1' }, P2P.roomId);
@@ -5465,16 +5501,49 @@ function initP2P() {
     P2P.act.pos = mk('pos'); P2P.act.hello = mk('hello'); P2P.act.chat = mk('chat'); P2P.act.mkt = mk('mkt');
     P2P.act.buy = room.makeAction('buy', { kind: 'request', onRequest: (req, meta) => p2pSell(req, meta && meta.peerId) });
     P2P.act.pos.onMessage = (p, { peerId }) => { if (p && typeof p.x === 'number') { P2P.pres.set(peerId, p); P2P.dirty = true; } };
-    P2P.act.hello.onMessage = (h, { peerId }) => { if (!h || typeof h !== 'object') return; const name = String(h.name || 'Galerici').replace(/[\u0000-\u001f]/g, '').slice(0, 18); NET.names[peerId] = { name }; P2P.hello.set(peerId, { id: peerId, name, net: +h.net || 0, day: h.day | 0, sold: h.sold | 0, level: h.level | 0, biz: h.biz | 0, at: Date.now() }); rememberScore(name, P2P.hello.get(peerId)); buildScores(); P2P.dirty = true; refreshOnlineViews(); };
+    P2P.act.hello.onMessage = (h, { peerId }) => { if (!h || typeof h !== 'object') return; const name = String(h.name || 'Galerici').replace(/[\u0000-\u001f]/g, '').slice(0, 18); NET.names[peerId] = { name }; P2P.hello.set(peerId, { id: peerId, name, net: +h.net || 0, day: h.day | 0, sold: h.sold | 0, level: h.level | 0, biz: h.biz | 0, at: Date.now() }); rememberScore(name, P2P.hello.get(peerId)); buildScores(); P2P.dirty = true; refreshOnlineViews(); refreshLobby(); };
     P2P.act.chat.onMessage = (d, { peerId }) => onChat({ peer: peerId, by: peerId, isMe: false, data: d });
     P2P.act.mkt.onMessage = (list, { peerId }) => { P2P.mkts.set(peerId, Array.isArray(list) ? list.slice(0, 20) : []); buildMarket(); refreshOnlineViews(); };
     room.onPeerJoin = id => { sendHello(id); sendMkt(id); };
-    room.onPeerLeave = id => { P2P.pres.delete(id); P2P.hello.delete(id); P2P.mkts.delete(id); buildMarket(); buildScores(); P2P.dirty = true; refreshOnlineViews(); };
+    room.onPeerLeave = id => { P2P.pres.delete(id); P2P.hello.delete(id); P2P.mkts.delete(id); buildMarket(); buildScores(); P2P.dirty = true; refreshOnlineViews(); refreshLobby(); };
     NET.ready = true; buildScores(); renderOnlinePill();
     setInterval(() => sendHello(), 10000);
     return true;
   } catch (e) { console.warn('p2p', e); return false; }
 }
+function switchRoom(code) {
+  LS('galerici-oda', code); LS('galerici-online', '1');
+  history.replaceState(null, '', location.pathname + location.search + (code === 'sehir' ? '' : '#oda=' + code));
+  leaveP2P(); initP2P(); menuPane = 'lobby'; renderMenu();
+  toast(code === 'sehir' ? 'Herkese açık şehre geçtin' : 'Oda ' + code.toUpperCase() + ' hazır', 'good');
+}
+function lobbyPlayers() {
+  const rows = [`<li class="me"><i></i>${esc(myNick())} <small>sen</small></li>`].concat([...P2P.hello.values()].map(h => `<li><i></i>${esc(h.name)} <small>seviye ${h.level | 0} · gün ${h.day | 0}</small></li>`));
+  return rows.join('') + (P2P.hello.size ? '' : `<li class="wait">Arkadaşın bekleniyor… Linki gönder, o açınca burada görünecek.</li>`);
+}
+function lobbyHTML() {
+  const solo = LS('galerici-online') === '0' || (!P2P.room && NET.mode !== 'claude');
+  if (NET.mode === 'claude') return `<h3>Arkadaşlarla oyna</h3><p>Claude üzerinden açtığın için Claude hesabınla çevrimiçisin. Arkadaşlarınla oda kurup oynamak için oyunu GitHub linkinden aç.</p><button class="mbtn sm" data-m="back">← Geri</button>`;
+  const code = P2P.roomId || p2pRoomId(), pub = code === 'sehir';
+  const link = location.href.split('#')[0] + (pub ? '' : '#oda=' + code);
+  return `<h3>Arkadaşlarla oyna</h3>
+  <label class="lob-name"><span>Oyuncu adın</span><input id="nickIn" maxlength="18" autocomplete="off" value="${esc(myNick())}"></label>
+  ${solo ? `<div class="lob-card"><p>Şu an tek kişilik oynuyorsun.</p><button class="mbtn pri" data-m="publicroom">Çevrimiçi ol</button></div>` : `
+  <div class="lob-card">
+    <small>${pub ? 'Bulunduğun yer' : 'Oda kodu'}</small>
+    <div class="lob-code">${pub ? 'Herkese açık şehir' : esc(code.toUpperCase())}</div>
+    ${pub ? '<p>Linki açan herkes burada. Sadece arkadaşlarınla oynamak için kendi odanı kur.</p>' : `<p>Bu linki arkadaşına gönder, açınca aynı şehirde olursunuz:</p><div class="lob-link"><input readonly value="${esc(link)}" aria-label="Davet linki"><button class="b pri" data-m="invite" type="button">Kopyala</button></div>`}
+    <small>Odadakiler</small><ul class="lob-pl" id="lobPl">${lobbyPlayers()}</ul>
+  </div>`}
+  <div class="lob-acts">
+    <button class="b pri" data-m="mkroom" type="button">Yeni oda kur</button>
+    <form class="lob-join" onsubmit="return false"><input id="joinIn" maxlength="12" placeholder="Oda kodu" aria-label="Katılacağın oda kodu"><button class="b" data-m="joinroom" type="button">Odaya katıl</button></form>
+    ${!pub && !solo ? '<button class="b" data-m="publicroom" type="button">Herkese açık şehre dön</button>' : ''}
+    ${!solo ? '<button class="b" data-m="solo" type="button">Tek kişilik oyna</button>' : ''}
+  </div>
+  ${menuMode === 'pause' ? '<button class="mbtn pri" data-m="resume">Oyuna dön</button>' : '<button class="mbtn pri" data-m="back">Tamam</button>'}`;
+}
+function refreshLobby() { const el = $('#lobPl'); if (el && !$('#menuOv').hidden) el.innerHTML = lobbyPlayers(); }
 function leaveP2P() { try { P2P.room && P2P.room.leave(); } catch (_) {} P2P.room = null; P2P.pres.clear(); P2P.hello.clear(); P2P.mkts.clear(); clearPeers(); NET.market = []; buildScores(); renderOnlinePill(); }
 function sendHello(target) { if (!P2P.room || !S) return; const h = { name: myNick(), net: netWorth(), day: S.day, sold: S.sold || 0, level: S.level || 1, biz: Object.keys(S.biz || {}).length }; rememberScore(myNick(), Object.assign({ id: NET.myId }, h)); try { P2P.act.hello.send(h, target ? { target } : undefined); } catch (_) {} }
 function myListings() { return S ? S.cars.filter(c => c.onlineId).map(c => ({ id: c.onlineId, price: c.onlinePrice, car: packCar(c) })) : []; }
