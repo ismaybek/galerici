@@ -465,6 +465,7 @@ body{font-variant-numeric:tabular-nums}
 .lob-pl li{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:8px 10px;font-weight:600;font-size:15px;color:#111}
 .lob-pl li i{width:9px;height:9px;border-radius:50%;background:#1f7a45;flex:none}
 .lob-pl li small{color:#555;font-weight:500}
+.lob-pl li.wait.net{color:#9a6510}.lob-pl li.wait.net.ok{color:#1d7a44}
 .lob-pl li.wait{background:transparent;color:#555;font-weight:500;font-size:13.5px}.lob-pl li.wait i{display:none}
 .lob-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .lob-join{display:flex;gap:6px}.lob-join input{width:120px;text-transform:uppercase}
@@ -5490,6 +5491,113 @@ function refreshOnlineViews() {
   if (!$('#pcOv').hidden && (pcApp === 'pazar' || pcApp === 'sira')) renderPC();
 }
 
+/* ====================== relay: MQTT over WSS public brokers — works across any two networks, even when direct WebRTC is blocked ====================== */
+const MQTT_URLS = window.__MQTT_URLS || ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
+function mqttConn(url, topic, onMsg, onState) {
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  let ws = null, ok = false, closed = false, buf = new Uint8Array(0), ping = null, retry = 1500;
+  const cat = (...a) => { let n = 0; a.forEach(x => n += x.length); const o = new Uint8Array(n); let i = 0; a.forEach(x => { o.set(x, i); i += x.length; }); return o; };
+  const str = s => { const b = enc.encode(s); return cat([b.length >> 8, b.length & 255], b); };
+  const pkt = (h, body) => { const len = []; let n = body.length; do { let d = n % 128; n = Math.floor(n / 128); if (n > 0) d |= 128; len.push(d); } while (n > 0); return cat([h], len, body); };
+  function later() { if (closed) return; setTimeout(open, retry); retry = Math.min(30000, retry * 2); }
+  function open() {
+    if (closed) return;
+    try { ws = new WebSocket(url, ['mqtt']); } catch (_) { return later(); }
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { const cid = 'gal' + Math.random().toString(36).slice(2, 14); try { ws.send(pkt(0x10, cat(str('MQTT'), [4, 2, 0, 60], str(cid)))); } catch (_) {} };
+    ws.onmessage = e => { if (typeof e.data === 'string') return; buf = cat(buf, new Uint8Array(e.data)); parse(); };
+    ws.onclose = () => { const was = ok; ok = false; clearInterval(ping); if (was && onState) onState(); later(); };
+    ws.onerror = () => {};
+  }
+  function parse() {
+    while (buf.length >= 2) {
+      let m = 1, len = 0, i = 1, d;
+      do { if (i >= buf.length) return; d = buf[i++]; len += (d & 127) * m; m *= 128; } while (d & 128);
+      if (buf.length < i + len) return;
+      const h = buf[0], body = buf.subarray(i, i + len); buf = buf.slice(i + len);
+      const t = h >> 4;
+      if (t === 2) {
+        if (body[1] === 0) { ok = true; retry = 1500; try { ws.send(pkt(0x82, cat([0, 1], str(topic), [0]))); } catch (_) {} clearInterval(ping); ping = setInterval(() => { try { ws.send(new Uint8Array([0xc0, 0])); } catch (_) {} }, 25000); if (onState) onState(true); }
+      } else if (t === 3) {
+        const tl = (body[0] << 8) | body[1]; let p = 2 + tl; if ((h >> 1) & 3) p += 2;
+        try { onMsg(dec.decode(body.subarray(p))); } catch (_) {}
+      }
+    }
+  }
+  open();
+  return {
+    get ok() { return ok; },
+    pub(s) { if (!ok) return false; try { ws.send(pkt(0x30, cat(str(topic), enc.encode(s)))); return true; } catch (_) { return false; } },
+    close() { closed = true; clearInterval(ping); try { if (ws) { if (ok) ws.send(new Uint8Array([0xe0, 0])); ws.close(); } } catch (_) {} }
+  };
+}
+/* one room API on top of both paths: WebRTC (Trystero) when it connects, broker relay otherwise; every message carries an id so a copy that arrives both ways is used once */
+function hybridRoom(code, selfId, onJoinError) {
+  const acts = {}, rtc = new Set(), seenAt = new Map(), joined = new Set(), dup = new Map(), pending = new Map();
+  const rid = () => Math.random().toString(36).slice(2, 11);
+  const room = { onPeerJoin: null, onPeerLeave: null };
+  const topic = 'galerici-tr-v1/oda/' + code;
+  let left = false, lastPosT = 0, posTimer = null, posLast = null;
+  const conns = MQTT_URLS.map(u => mqttConn(u, topic, onRelay, up => { if (up) pub({ a: '_j' }); refreshLobby(); }));
+  let tr = null;
+  if (window.Trystero && window.isSecureContext && window.crypto && crypto.subtle) {
+    try { tr = window.Trystero.joinRoom({ appId: 'galerici-simulatoru-tr-v1', turnConfig: P2P_TURN }, code, { onJoinError }); } catch (e) { console.warn('p2p', e); }
+  }
+  function isDup(i) { if (!i) return false; if (dup.has(i)) return true; dup.set(i, Date.now()); if (dup.size > 600) { const cut = Date.now() - 60000; dup.forEach((t, k) => { if (t < cut) dup.delete(k); }); } return false; }
+  function addPeer(id) { if (!id || id === selfId || joined.has(id) || left) return; joined.add(id); room.onPeerJoin && room.onPeerJoin(id); }
+  function dropPeer(id) { if (!joined.has(id) || rtc.has(id) || (seenAt.get(id) || 0) > Date.now() - 20000) return; joined.delete(id); room.onPeerLeave && room.onPeerLeave(id); }
+  function pub(o) { o.f = selfId; o.i = o.i || rid(); const s = JSON.stringify(o); let any = false; conns.forEach(c => { any = c.pub(s) || any; }); return any; }
+  const needRelay = target => target ? !rtc.has(target) : (joined.size === 0 || [...joined].some(id => !rtc.has(id)));
+  function deliver(a, d, peerId) { const A = acts[a]; if (A && A.onMessage) try { A.onMessage(d, { peerId }); } catch (e) { console.warn(e); } }
+  async function answer(a, d, peerId) { const A = acts[a]; if (!A || !A.onRequest) return { ok: false }; try { return await A.onRequest(d, { peerId }); } catch (_) { return { ok: false }; } }
+  function onRelay(s) {
+    if (left) return; let m; try { m = JSON.parse(s); } catch (_) { return; }
+    if (!m || typeof m !== 'object' || !m.f || m.f === selfId) return;
+    if (m.to && m.to !== selfId) return;
+    seenAt.set(m.f, Date.now());
+    if (m.a === '_l') { seenAt.delete(m.f); dropPeer(m.f); return; }
+    if (isDup(m.i)) return;
+    addPeer(m.f);
+    if (m.a === '_j') return;
+    if (m.q && m.r) { const p = pending.get(m.q); if (p) { pending.delete(m.q); clearTimeout(p.t); p.res(m.d); } return; }
+    if (m.q) { answer(m.a, m.d, m.f).then(r => pub({ a: m.a, d: r, to: m.f, q: m.q, r: 1 })); return; }
+    deliver(m.a, m.d, m.f);
+  }
+  if (tr) {
+    tr.onPeerJoin = id => { rtc.add(id); seenAt.set(id, Date.now()); if (joined.has(id)) return; addPeer(id); };
+    tr.onPeerLeave = id => { rtc.delete(id); dropPeer(id); };
+  }
+  const sweep = setInterval(() => { [...joined].forEach(dropPeer); }, 5000);
+  room.makeAction = (name, cfg) => {
+    const A = { onMessage: null, onRequest: cfg && cfg.onRequest || null };
+    const T = tr ? (cfg && cfg.kind === 'request' ? tr.makeAction(name, { kind: 'request', onRequest: (w, ctx) => answer(name, w && w.d, ctx && ctx.peerId) }) : tr.makeAction(name)) : null;
+    if (T && !(cfg && cfg.kind === 'request')) T.onMessage = (w, ctx) => { if (!w || isDup(w.i)) return; const id = ctx && ctx.peerId; if (id) { seenAt.set(id, Date.now()); addPeer(id); } deliver(name, w.d, id); };
+    acts[name] = A;
+    A.send = (d, opt) => {
+      const target = opt && opt.target, i = rid();
+      if (T && rtc.size && (!target || rtc.has(target))) { try { T.send({ i, d }, target ? { target } : undefined); } catch (_) {} }
+      if (!needRelay(target)) return Promise.resolve();
+      if (name === 'pos' && !target) {   // relay positions at most 4×/s, always ending on the latest one
+        posLast = { a: name, d, i }; const now = Date.now();
+        if (now - lastPosT >= 250) { lastPosT = now; pub(posLast); posLast = null; }
+        else if (!posTimer) posTimer = setTimeout(() => { posTimer = null; if (posLast) { lastPosT = Date.now(); pub(posLast); posLast = null; } }, 260);
+        return Promise.resolve();
+      }
+      pub(Object.assign({ a: name, d, i }, target ? { to: target } : {}));
+      return Promise.resolve();
+    };
+    A.request = (d, opt) => {
+      const target = opt && opt.target, ms = (opt && opt.timeoutMs) || 9000;
+      if (T && target && rtc.has(target)) return T.request({ i: rid(), d }, { target, timeoutMs: ms });
+      return new Promise((res, rej) => { const q = rid(); const t = setTimeout(() => { pending.delete(q); rej(new Error('timeout')); }, ms); pending.set(q, { res, t }); if (!pub({ a: name, d, to: target, q })) { clearTimeout(t); pending.delete(q); rej(new Error('offline')); } });
+    };
+    return A;
+  };
+  room.status = () => ({ relay: conns.filter(c => c.ok).length, direct: rtc.size, peers: joined.size });
+  room.leave = () => { if (left) return; pub({ a: '_l' }); left = true; clearInterval(sweep); clearTimeout(posTimer); setTimeout(() => conns.forEach(c => c.close()), 150); try { tr && tr.leave(); } catch (_) {} };
+  return room;
+}
+
 /* ====================== P2P online (GitHub Pages etc.): Trystero over public Nostr relays, no server ====================== */
 const P2P_TURN = [{ urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }];
 const P2P = { room: null, act: {}, pres: new Map(), hello: new Map(), mkts: new Map(), roomId: 'sehir', dirty: false };
@@ -5497,12 +5605,13 @@ const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k)
 function myNick() { return (LS('galerici-nick') || '').trim().slice(0, 18) || 'Galerici' + (LS('galerici-nick-n') || (LS('galerici-nick-n', String(rint(100, 999))), LS('galerici-nick-n'))); }
 function p2pRoomId() { const m = location.hash.match(/oda=([a-z0-9_-]{1,32})/i); return (m ? m[1] : (LS('galerici-oda') || 'sehir')).toLowerCase(); }
 function initP2P() {
-  if (!window.Trystero || LS('galerici-online') === '0' || !window.isSecureContext || !(window.crypto && crypto.subtle)) return false;
+  if (LS('galerici-online') === '0' || typeof WebSocket === 'undefined') return false;
   try {
     P2P.roomId = p2pRoomId();
     P2P.err = ''; P2P.since = Date.now();
-    const room = window.Trystero.joinRoom({ appId: 'galerici-simulatoru-tr-v1', turnConfig: P2P_TURN }, P2P.roomId, { onJoinError: e => { console.warn('p2p join', e); P2P.err = 'Arkadaşına doğrudan bağlanılamadı. İnternetin (mobil veri, okul/yurt ağı) bağlantıyı engelliyor olabilir. İkiniz de sayfayı yenileyip tekrar deneyin ya da başka bir ağdan (ev Wi‑Fi’si) girin.'; refreshLobby(); } });
-    P2P.room = room; NET.mode = 'p2p'; NET.myId = window.Trystero.selfId;
+    if (!P2P.selfId) P2P.selfId = (window.Trystero && window.Trystero.selfId) || ('p' + Math.random().toString(36).slice(2, 12));
+    const room = hybridRoom(P2P.roomId, P2P.selfId, e => { console.warn('p2p join', e); });
+    P2P.room = room; NET.mode = 'p2p'; NET.myId = P2P.selfId;
     const mk = n => room.makeAction(n);
     P2P.act.pos = mk('pos'); P2P.act.hello = mk('hello'); P2P.act.chat = mk('chat'); P2P.act.mkt = mk('mkt');
     P2P.act.buy = room.makeAction('buy', { kind: 'request', onRequest: (req, meta) => p2pSell(req, meta && meta.peerId) });
@@ -5525,8 +5634,9 @@ function switchRoom(code) {
 }
 function lobbyPlayers() {
   const rows = [`<li class="me"><i></i>${esc(myNick())} <small>sen</small></li>`].concat([...P2P.hello.values()].map(h => `<li><i></i>${esc(h.name)} <small>seviye ${h.level | 0} · gün ${h.day | 0}</small></li>`));
-  const long = Date.now() - (P2P.since || 0) > 20000;
-  return rows.join('') + (P2P.hello.size ? '' : `<li class="wait">${P2P.err ? esc(P2P.err) : long ? 'Hâlâ kimse yok. Arkadaşın aynı kodu girdiyse 20-30 saniye bekleyin; olmazsa ikiniz de sayfayı yenileyin.' : 'Arkadaşın bekleniyor… Linki gönder, o açınca burada görünecek.'}</li>`);
+  const long = Date.now() - (P2P.since || 0) > 20000, st = P2P.room && P2P.room.status ? P2P.room.status() : null;
+  const net = st ? (st.relay ? `<li class="wait net ok">● Sunucuya bağlı${st.direct ? ' · ' + st.direct + ' doğrudan bağlantı' : ''}</li>` : `<li class="wait net">${long ? '● Sunucuya bağlanılamadı. İnternetini kontrol et, sayfayı yenile.' : '● Sunucuya bağlanılıyor…'}</li>`) : '';
+  return rows.join('') + (P2P.hello.size ? '' : `<li class="wait">${long && st && st.relay ? 'Hâlâ kimse yok. Arkadaşının da aynı oda kodunda olduğundan emin ol (kodu büyük/küçük harf fark etmez).' : 'Arkadaşın bekleniyor… Linki gönder, o açınca burada görünecek.'}</li>`) + net;
 }
 function lobbyHTML() {
   const solo = LS('galerici-online') === '0' || (!P2P.room && NET.mode !== 'claude');
@@ -5552,6 +5662,7 @@ function lobbyHTML() {
   ${menuMode === 'pause' ? '<button class="mbtn pri" data-m="resume">Oyuna dön</button>' : '<button class="mbtn pri" data-m="play">Oyuna gir ▶</button><button class="mbtn sm" data-m="back">← Ana menü</button>'}`;
 }
 setInterval(() => refreshLobby(), 5000);
+addEventListener('pagehide', () => { try { P2P.room && P2P.room.leave(); } catch (_) {} });
 function refreshLobby() { const el = $('#lobPl'); if (el && !$('#menuOv').hidden) el.innerHTML = lobbyPlayers(); }
 function leaveP2P() { clearInterval(P2P.hbT); try { P2P.room && P2P.room.leave(); } catch (_) {} P2P.room = null; P2P.pres.clear(); P2P.hello.clear(); P2P.mkts.clear(); clearPeers(); NET.market = []; buildScores(); renderOnlinePill(); }
 function sendHello(target) { if (!P2P.room || !S) return; const h = { name: myNick(), net: netWorth(), day: S.day, sold: S.sold || 0, level: S.level || 1, biz: Object.keys(S.biz || {}).length }; rememberScore(myNick(), Object.assign({ id: NET.myId }, h)); try { P2P.act.hello.send(h, target ? { target } : undefined); } catch (_) {} }
